@@ -441,6 +441,24 @@ export class DefaultConfig implements Config {
           territoryBound: false,
           maxHealth: 1000,
         };
+      case UnitType.Submarine:
+        return {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_200_000, (numUnits + 1) * 300_000),
+            UnitType.Submarine,
+          ),
+          territoryBound: false,
+          maxHealth: 900,
+        };
+      case UnitType.RadarShip:
+        return {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(1_500_000, (numUnits + 1) * 350_000),
+            UnitType.RadarShip,
+          ),
+          territoryBound: false,
+          maxHealth: 1000,
+        };
       case UnitType.Shell:
         return {
           cost: () => 0n,
@@ -520,6 +538,16 @@ export class DefaultConfig implements Config {
           ),
           territoryBound: true,
           constructionDuration: this.instantBuild() ? 0 : 30 * 10,
+          upgradable: true,
+        };
+      case UnitType.SonarStation:
+        return {
+          cost: this.costWrapper(
+            (numUnits: number) => Math.min(2_000_000, (numUnits + 1) * 750_000),
+            UnitType.SonarStation,
+          ),
+          territoryBound: true,
+          constructionDuration: this.instantBuild() ? 0 : 15 * 10,
           upgradable: true,
         };
       case UnitType.City:
@@ -976,6 +1004,14 @@ export class DefaultConfig implements Config {
 
   warshipTargettingRange(): number {
     return 130;
+  }
+
+  radarShipDetectionRange(): number {
+    return 140;
+  }
+
+  sonarStationDetectionRange(): number {
+    return 180;
   }
 
   warshipShellAttackRate(): number {

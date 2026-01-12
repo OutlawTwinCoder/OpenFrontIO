@@ -340,9 +340,12 @@ function getAllEnabledUnits(myPlayer: boolean, config: Config): Set<UnitType> {
     addStructureIfEnabled(UnitType.Port);
     addStructureIfEnabled(UnitType.MissileSilo);
     addStructureIfEnabled(UnitType.SAMLauncher);
+    addStructureIfEnabled(UnitType.SonarStation);
     addStructureIfEnabled(UnitType.Factory);
   } else {
     addStructureIfEnabled(UnitType.Warship);
+    addStructureIfEnabled(UnitType.Submarine);
+    addStructureIfEnabled(UnitType.RadarShip);
     addStructureIfEnabled(UnitType.HydrogenBomb);
     addStructureIfEnabled(UnitType.MIRV);
     addStructureIfEnabled(UnitType.AtomBomb);
@@ -356,6 +359,8 @@ const ATTACK_UNIT_TYPES: UnitType[] = [
   UnitType.MIRV,
   UnitType.HydrogenBomb,
   UnitType.Warship,
+  UnitType.Submarine,
+  UnitType.RadarShip,
 ];
 
 function createMenuElements(

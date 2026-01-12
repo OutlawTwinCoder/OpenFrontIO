@@ -75,6 +75,20 @@ export const buildTable: BuildItemDisplay[][] = [
       countable: true,
     },
     {
+      unitType: UnitType.Submarine,
+      icon: warshipIcon,
+      description: "build_menu.desc.submarine",
+      key: "unit_type.submarine",
+      countable: true,
+    },
+    {
+      unitType: UnitType.RadarShip,
+      icon: warshipIcon,
+      description: "build_menu.desc.radar_ship",
+      key: "unit_type.radar_ship",
+      countable: true,
+    },
+    {
       unitType: UnitType.Port,
       icon: portIcon,
       description: "build_menu.desc.port",
@@ -94,6 +108,13 @@ export const buildTable: BuildItemDisplay[][] = [
       icon: samlauncherIcon,
       description: "build_menu.desc.sam_launcher",
       key: "unit_type.sam_launcher",
+      countable: true,
+    },
+    {
+      unitType: UnitType.SonarStation,
+      icon: samlauncherIcon,
+      description: "build_menu.desc.sonar_station",
+      key: "unit_type.sonar_station",
       countable: true,
     },
     {

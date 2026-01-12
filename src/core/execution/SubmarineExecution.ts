@@ -8,22 +8,21 @@ import {
   UnitType,
 } from "../game/Game";
 import { TileRef } from "../game/GameMap";
-import { isSubmarineVisibleToPlayer } from "../game/SubmarineDetection";
 import { PathFinding } from "../pathfinding/PathFinder";
 import { PathStatus, SteppingPathFinder } from "../pathfinding/types";
 import { PseudoRandom } from "../PseudoRandom";
 import { ShellExecution } from "./ShellExecution";
 
-export class WarshipExecution implements Execution {
+export class SubmarineExecution implements Execution {
   private random: PseudoRandom;
-  private warship: Unit;
+  private submarine: Unit;
   private mg: Game;
   private pathfinder: SteppingPathFinder<TileRef>;
   private lastShellAttack = 0;
   private alreadySentShell = new Set<Unit>();
 
   constructor(
-    private input: (UnitParams<UnitType.Warship> & OwnerComp) | Unit,
+    private input: (UnitParams<UnitType.Submarine> & OwnerComp) | Unit,
   ) {}
 
   init(mg: Game, ticks: number): void {
@@ -31,20 +30,20 @@ export class WarshipExecution implements Execution {
     this.pathfinder = PathFinding.Water(mg);
     this.random = new PseudoRandom(mg.ticks());
     if (isUnit(this.input)) {
-      this.warship = this.input;
+      this.submarine = this.input;
     } else {
       const spawn = this.input.owner.canBuild(
-        UnitType.Warship,
+        UnitType.Submarine,
         this.input.patrolTile,
       );
       if (spawn === false) {
         console.warn(
-          `Failed to spawn warship for ${this.input.owner.name()} at ${this.input.patrolTile}`,
+          `Failed to spawn submarine for ${this.input.owner.name()} at ${this.input.patrolTile}`,
         );
         return;
       }
-      this.warship = this.input.owner.buildUnit(
-        UnitType.Warship,
+      this.submarine = this.input.owner.buildUnit(
+        UnitType.Submarine,
         spawn,
         this.input,
       );
@@ -52,36 +51,36 @@ export class WarshipExecution implements Execution {
   }
 
   tick(ticks: number): void {
-    if (this.warship.health() <= 0) {
-      this.warship.delete();
+    if (this.submarine.health() <= 0) {
+      this.submarine.delete();
       return;
     }
 
-    const hasPort = this.warship.owner().unitCount(UnitType.Port) > 0;
+    const hasPort = this.submarine.owner().unitCount(UnitType.Port) > 0;
     if (hasPort) {
-      this.warship.modifyHealth(1);
+      this.submarine.modifyHealth(1);
     }
 
-    this.warship.setTargetUnit(this.findTargetUnit());
-    if (this.warship.targetUnit()?.type() === UnitType.TradeShip) {
+    this.submarine.setTargetUnit(this.findTargetUnit());
+    if (this.submarine.targetUnit()?.type() === UnitType.TradeShip) {
       this.huntDownTradeShip();
       return;
     }
 
     this.patrol();
 
-    if (this.warship.targetUnit() !== undefined) {
+    if (this.submarine.targetUnit() !== undefined) {
       this.shootTarget();
       return;
     }
   }
 
   private findTargetUnit(): Unit | undefined {
-    const hasPort = this.warship.owner().unitCount(UnitType.Port) > 0;
+    const hasPort = this.submarine.owner().unitCount(UnitType.Port) > 0;
     const patrolRangeSquared = this.mg.config().warshipPatrolRange() ** 2;
 
     const ships = this.mg.nearbyUnits(
-      this.warship.tile()!,
+      this.submarine.tile()!,
       this.mg.config().warshipTargettingRange(),
       [
         UnitType.TransportShip,
@@ -94,16 +93,10 @@ export class WarshipExecution implements Execution {
     const potentialTargets: { unit: Unit; distSquared: number }[] = [];
     for (const { unit, distSquared } of ships) {
       if (
-        unit.owner() === this.warship.owner() ||
-        unit === this.warship ||
-        !this.warship.owner().canAttackPlayer(unit.owner(), true) ||
+        unit.owner() === this.submarine.owner() ||
+        unit === this.submarine ||
+        !this.submarine.owner().canAttackPlayer(unit.owner(), true) ||
         this.alreadySentShell.has(unit)
-      ) {
-        continue;
-      }
-      if (
-        unit.type() === UnitType.Submarine &&
-        !isSubmarineVisibleToPlayer(this.mg, unit, this.warship.owner())
       ) {
         continue;
       }
@@ -111,19 +104,17 @@ export class WarshipExecution implements Execution {
         if (
           !hasPort ||
           unit.isSafeFromPirates() ||
-          unit.targetUnit()?.owner() === this.warship.owner() || // trade ship is coming to my port
-          unit.targetUnit()?.owner().isFriendly(this.warship.owner()) // trade ship is coming to my ally
+          unit.targetUnit()?.owner() === this.submarine.owner() || // trade ship is coming to my port
+          unit.targetUnit()?.owner().isFriendly(this.submarine.owner()) // trade ship is coming to my ally
         ) {
           continue;
         }
         if (
           this.mg.euclideanDistSquared(
-            this.warship.patrolTile()!,
+            this.submarine.patrolTile()!,
             unit.tile(),
           ) > patrolRangeSquared
         ) {
-          // Prevent warship from chasing trade ship that is too far away from
-          // the patrol tile to prevent warships from wandering around the map.
           continue;
         }
       }
@@ -134,7 +125,6 @@ export class WarshipExecution implements Execution {
       const { unit: unitA, distSquared: distA } = a;
       const { unit: unitB, distSquared: distB } = b;
 
-      // Prioritize Transport Ships above all other units
       if (
         unitA.type() === UnitType.TransportShip &&
         unitB.type() !== UnitType.TransportShip
@@ -146,7 +136,6 @@ export class WarshipExecution implements Execution {
       )
         return 1;
 
-      // Then prioritize Warships.
       if (
         unitA.type() === UnitType.Warship &&
         unitB.type() !== UnitType.Warship
@@ -158,7 +147,6 @@ export class WarshipExecution implements Execution {
       )
         return 1;
 
-      // If both are the same type, sort by distance (lower `distSquared` means closer)
       return distA - distB;
     })[0]?.unit;
   }
@@ -166,22 +154,20 @@ export class WarshipExecution implements Execution {
   private shootTarget() {
     const shellAttackRate = this.mg.config().warshipShellAttackRate();
     if (this.mg.ticks() - this.lastShellAttack > shellAttackRate) {
-      if (this.warship.targetUnit()?.type() !== UnitType.TransportShip) {
-        // Warships don't need to reload when attacking transport ships.
+      if (this.submarine.targetUnit()?.type() !== UnitType.TransportShip) {
         this.lastShellAttack = this.mg.ticks();
       }
       this.mg.addExecution(
         new ShellExecution(
-          this.warship.tile(),
-          this.warship.owner(),
-          this.warship,
-          this.warship.targetUnit()!,
+          this.submarine.tile(),
+          this.submarine.owner(),
+          this.submarine,
+          this.submarine.targetUnit()!,
         ),
       );
-      if (!this.warship.targetUnit()!.hasHealth()) {
-        // Don't send multiple shells to target that can be oneshotted
-        this.alreadySentShell.add(this.warship.targetUnit()!);
-        this.warship.setTargetUnit(undefined);
+      if (!this.submarine.targetUnit()!.hasHealth()) {
+        this.alreadySentShell.add(this.submarine.targetUnit()!);
+        this.submarine.setTargetUnit(undefined);
         return;
       }
     }
@@ -189,23 +175,22 @@ export class WarshipExecution implements Execution {
 
   private huntDownTradeShip() {
     for (let i = 0; i < 2; i++) {
-      // target is trade ship so capture it.
       const result = this.pathfinder.next(
-        this.warship.tile(),
-        this.warship.targetUnit()!.tile(),
+        this.submarine.tile(),
+        this.submarine.targetUnit()!.tile(),
         5,
       );
       switch (result.status) {
         case PathStatus.COMPLETE:
-          this.warship.owner().captureUnit(this.warship.targetUnit()!);
-          this.warship.setTargetUnit(undefined);
-          this.warship.move(this.warship.tile());
+          this.submarine.owner().captureUnit(this.submarine.targetUnit()!);
+          this.submarine.setTargetUnit(undefined);
+          this.submarine.move(this.submarine.tile());
           return;
         case PathStatus.NEXT:
-          this.warship.move(result.node);
+          this.submarine.move(result.node);
           break;
         case PathStatus.PENDING:
-          this.warship.touch();
+          this.submarine.touch();
           break;
         case PathStatus.NOT_FOUND: {
           console.log(`path not found to target`);
@@ -216,27 +201,27 @@ export class WarshipExecution implements Execution {
   }
 
   private patrol() {
-    if (this.warship.targetTile() === undefined) {
-      this.warship.setTargetTile(this.randomTile());
-      if (this.warship.targetTile() === undefined) {
+    if (this.submarine.targetTile() === undefined) {
+      this.submarine.setTargetTile(this.randomTile());
+      if (this.submarine.targetTile() === undefined) {
         return;
       }
     }
 
     const result = this.pathfinder.next(
-      this.warship.tile(),
-      this.warship.targetTile()!,
+      this.submarine.tile(),
+      this.submarine.targetTile()!,
     );
     switch (result.status) {
       case PathStatus.COMPLETE:
-        this.warship.setTargetTile(undefined);
-        this.warship.move(result.node);
+        this.submarine.setTargetTile(undefined);
+        this.submarine.move(result.node);
         break;
       case PathStatus.NEXT:
-        this.warship.move(result.node);
+        this.submarine.move(result.node);
         break;
       case PathStatus.PENDING:
-        this.warship.touch();
+        this.submarine.touch();
         return;
       case PathStatus.NOT_FOUND: {
         console.log(`path not found to target`);
@@ -246,7 +231,7 @@ export class WarshipExecution implements Execution {
   }
 
   isActive(): boolean {
-    return this.warship?.isActive();
+    return this.submarine?.isActive();
   }
 
   activeDuringSpawnPhase(): boolean {
@@ -254,21 +239,20 @@ export class WarshipExecution implements Execution {
   }
 
   randomTile(allowShoreline: boolean = false): TileRef | undefined {
-    let warshipPatrolRange = this.mg.config().warshipPatrolRange();
+    let patrolRange = this.mg.config().warshipPatrolRange();
     const maxAttemptBeforeExpand: number = 500;
     let attempts: number = 0;
     let expandCount: number = 0;
 
-    // Get warship's water component for connectivity check
-    const warshipComponent = this.mg.getWaterComponent(this.warship.tile());
+    const component = this.mg.getWaterComponent(this.submarine.tile());
 
     while (expandCount < 3) {
       const x =
-        this.mg.x(this.warship.patrolTile()!) +
-        this.random.nextInt(-warshipPatrolRange / 2, warshipPatrolRange / 2);
+        this.mg.x(this.submarine.patrolTile()!) +
+        this.random.nextInt(-patrolRange / 2, patrolRange / 2);
       const y =
-        this.mg.y(this.warship.patrolTile()!) +
-        this.random.nextInt(-warshipPatrolRange / 2, warshipPatrolRange / 2);
+        this.mg.y(this.submarine.patrolTile()!) +
+        this.random.nextInt(-patrolRange / 2, patrolRange / 2);
       if (!this.mg.isValidCoord(x, y)) {
         continue;
       }
@@ -281,32 +265,25 @@ export class WarshipExecution implements Execution {
         if (attempts === maxAttemptBeforeExpand) {
           expandCount++;
           attempts = 0;
-          warshipPatrolRange =
-            warshipPatrolRange + Math.floor(warshipPatrolRange / 2);
+          patrolRange = patrolRange + Math.floor(patrolRange / 2);
         }
         continue;
       }
-      // Check water component connectivity
-      if (
-        warshipComponent !== null &&
-        !this.mg.hasWaterComponent(tile, warshipComponent)
-      ) {
+      if (component !== null && !this.mg.hasWaterComponent(tile, component)) {
         attempts++;
         if (attempts === maxAttemptBeforeExpand) {
           expandCount++;
           attempts = 0;
-          warshipPatrolRange =
-            warshipPatrolRange + Math.floor(warshipPatrolRange / 2);
+          patrolRange = patrolRange + Math.floor(patrolRange / 2);
         }
         continue;
       }
       return tile;
     }
     console.warn(
-      `Failed to find random tile for warship for ${this.warship.owner().name()}`,
+      `Failed to find random tile for submarine for ${this.submarine.owner().name()}`,
     );
     if (!allowShoreline) {
-      // If we failed to find a tile on the ocean, try again but allow shoreline
       return this.randomTile(true);
     }
     return undefined;
