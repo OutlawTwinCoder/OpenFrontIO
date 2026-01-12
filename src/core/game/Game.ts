@@ -223,6 +223,8 @@ export interface UnitInfo {
 export enum UnitType {
   TransportShip = "Transport",
   Warship = "Warship",
+  Submarine = "Submarine",
+  RadarShip = "Radar Ship",
   Shell = "Shell",
   SAMMissile = "SAMMissile",
   Port = "Port",
@@ -232,6 +234,7 @@ export enum UnitType {
   MissileSilo = "Missile Silo",
   DefensePost = "Defense Post",
   SAMLauncher = "SAM Launcher",
+  SonarStation = "Sonar Station",
   City = "City",
   MIRV = "MIRV",
   MIRVWarhead = "MIRV Warhead",
@@ -251,6 +254,7 @@ const _structureTypes: ReadonlySet<UnitType> = new Set([
   UnitType.SAMLauncher,
   UnitType.MissileSilo,
   UnitType.Port,
+  UnitType.SonarStation,
   UnitType.Factory,
 ]);
 
@@ -273,6 +277,14 @@ export interface UnitParamsMap {
   };
 
   [UnitType.Warship]: {
+    patrolTile: TileRef;
+  };
+
+  [UnitType.Submarine]: {
+    patrolTile: TileRef;
+  };
+
+  [UnitType.RadarShip]: {
     patrolTile: TileRef;
   };
 
@@ -310,6 +322,8 @@ export interface UnitParamsMap {
   [UnitType.DefensePost]: Record<string, never>;
 
   [UnitType.SAMLauncher]: Record<string, never>;
+
+  [UnitType.SonarStation]: Record<string, never>;
 
   [UnitType.City]: Record<string, never>;
 

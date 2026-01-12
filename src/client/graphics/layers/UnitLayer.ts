@@ -4,6 +4,7 @@ import { Theme } from "../../../core/configuration/Config";
 import { UnitType } from "../../../core/game/Game";
 import { TileRef } from "../../../core/game/GameMap";
 import { GameView, UnitView } from "../../../core/game/GameView";
+import { isSubmarineVisibleToPlayer } from "../../../core/game/SubmarineDetection";
 import { BezenhamLine } from "../../../core/utilities/Line";
 import {
   AlternateViewEvent,
@@ -42,6 +43,7 @@ export class UnitLayer implements Layer {
   private alternateView = false;
 
   private oldShellTile = new Map<UnitView, TileRef>();
+  private renderedUnits = new Set<number>();
 
   private transformHandler: TransformHandler;
 
@@ -83,14 +85,13 @@ export class UnitLayer implements Layer {
   }
 
   /**
-   * Find player-owned warships near the given cell within a configurable radius
+   * Find player-owned naval units near the given cell within a configurable radius
    * @param clickRef The tile to check
-   * @returns Array of player's warships in range, sorted by distance (closest first)
+   * @returns Array of player's naval units in range, sorted by distance (closest first)
    */
-  private findWarshipsNearCell(clickRef: TileRef): UnitView[] {
-    // Only select warships owned by the player
+  private findNavalUnitsNearCell(clickRef: TileRef): UnitView[] {
     return this.game
-      .units(UnitType.Warship)
+      .units(UnitType.Warship, UnitType.Submarine, UnitType.RadarShip)
       .filter(
         (unit) =>
           unit.isActive() &&
@@ -109,7 +110,7 @@ export class UnitLayer implements Layer {
   private onMouseUp(
     event: MouseUpEvent,
     clickRef?: TileRef,
-    nearbyWarships?: UnitView[],
+    nearbyNavalUnits?: UnitView[],
   ) {
     if (clickRef === undefined) {
       // Convert screen coordinates to world coordinates
@@ -133,10 +134,10 @@ export class UnitLayer implements Layer {
     }
 
     // Find warships near this tile, sorted by distance
-    nearbyWarships ??= this.findWarshipsNearCell(clickRef);
-    if (nearbyWarships.length > 0) {
+    nearbyNavalUnits ??= this.findNavalUnitsNearCell(clickRef);
+    if (nearbyNavalUnits.length > 0) {
       // Toggle selection of the closest warship
-      this.eventBus.emit(new UnitSelectionEvent(nearbyWarships[0], true));
+      this.eventBus.emit(new UnitSelectionEvent(nearbyNavalUnits[0], true));
     }
   }
 
@@ -164,7 +165,7 @@ export class UnitLayer implements Layer {
       return;
     }
 
-    const nearbyWarships = this.findWarshipsNearCell(clickRef);
+    const nearbyWarships = this.findNavalUnitsNearCell(clickRef);
 
     if (nearbyWarships.length > 0) {
       this.onMouseUp(
@@ -236,6 +237,7 @@ export class UnitLayer implements Layer {
     this.transportShipTrailCanvas.width = this.game.width();
     this.transportShipTrailCanvas.height = this.game.height();
 
+    this.renderedUnits.clear();
     this.updateUnitsSprites(this.game.units().map((unit) => unit.id()));
 
     this.unitToTrail.forEach((trail, unit) => {
@@ -258,10 +260,22 @@ export class UnitLayer implements Layer {
       .filter((unit) => unit !== undefined);
 
     if (unitsToUpdate) {
+      const unitsToDraw: UnitView[] = [];
+      const unitsToClear: UnitView[] = [];
+      unitsToUpdate.forEach((unit) => {
+        if (this.shouldRenderUnit(unit)) {
+          unitsToDraw.push(unit);
+          unitsToClear.push(unit);
+        } else if (this.renderedUnits.has(unit.id())) {
+          unitsToClear.push(unit);
+          this.renderedUnits.delete(unit.id());
+        }
+      });
       // the clearing and drawing of unit sprites need to be done in 2 passes
       // otherwise the sprite of a unit can be drawn on top of another unit
-      this.clearUnitsCells(unitsToUpdate);
-      this.drawUnitsCells(unitsToUpdate);
+      this.clearUnitsCells(unitsToClear);
+      this.drawUnitsCells(unitsToDraw);
+      unitsToDraw.forEach((unit) => this.renderedUnits.add(unit.id()));
     }
   }
 
@@ -300,6 +314,16 @@ export class UnitLayer implements Layer {
     return Relationship.Enemy;
   }
 
+  private shouldRenderUnit(unit: UnitView): boolean {
+    if (
+      unit.type() === UnitType.Submarine &&
+      !isSubmarineVisibleToPlayer(this.game, unit, this.game.myPlayer())
+    ) {
+      return false;
+    }
+    return true;
+  }
+
   onUnitEvent(unit: UnitView) {
     // Check if unit was deactivated
     if (!unit.isActive()) {
@@ -311,6 +335,8 @@ export class UnitLayer implements Layer {
         this.handleBoatEvent(unit);
         break;
       case UnitType.Warship:
+      case UnitType.Submarine:
+      case UnitType.RadarShip:
         this.handleWarShipEvent(unit);
         break;
       case UnitType.Shell:
@@ -541,6 +567,9 @@ export class UnitLayer implements Layer {
   }
 
   drawSprite(unit: UnitView, customTerritoryColor?: Colord) {
+    if (!this.shouldRenderUnit(unit)) {
+      return;
+    }
     const x = this.game.x(unit.tile());
     const y = this.game.y(unit.tile());
 

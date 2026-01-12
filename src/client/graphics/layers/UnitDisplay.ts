@@ -30,11 +30,14 @@ export class UnitDisplay extends LitElement implements Layer {
   private keybinds: Record<string, { value: string; key: string }> = {};
   private _cities = 0;
   private _warships = 0;
+  private _submarines = 0;
+  private _radarShips = 0;
   private _factories = 0;
   private _missileSilo = 0;
   private _port = 0;
   private _defensePost = 0;
   private _samLauncher = 0;
+  private _sonarStations = 0;
   private allDisabled = false;
   private _hoveredUnit: UnitType | null = null;
 
@@ -62,6 +65,9 @@ export class UnitDisplay extends LitElement implements Layer {
       config.isUnitDisabled(UnitType.MissileSilo) &&
       config.isUnitDisabled(UnitType.SAMLauncher) &&
       config.isUnitDisabled(UnitType.Warship) &&
+      config.isUnitDisabled(UnitType.Submarine) &&
+      config.isUnitDisabled(UnitType.RadarShip) &&
+      config.isUnitDisabled(UnitType.SonarStation) &&
       config.isUnitDisabled(UnitType.AtomBomb) &&
       config.isUnitDisabled(UnitType.HydrogenBomb) &&
       config.isUnitDisabled(UnitType.MIRV);
@@ -89,6 +95,8 @@ export class UnitDisplay extends LitElement implements Layer {
           (player?.units(UnitType.MissileSilo).length ?? 0) > 0
         );
       case UnitType.Warship:
+      case UnitType.Submarine:
+      case UnitType.RadarShip:
         return (
           this.cost(item) <= (player?.gold() ?? 0n) &&
           (player?.units(UnitType.Port).length ?? 0) > 0
@@ -111,6 +119,9 @@ export class UnitDisplay extends LitElement implements Layer {
     this._samLauncher = player.totalUnitLevels(UnitType.SAMLauncher);
     this._factories = player.totalUnitLevels(UnitType.Factory);
     this._warships = player.totalUnitLevels(UnitType.Warship);
+    this._submarines = player.totalUnitLevels(UnitType.Submarine);
+    this._radarShips = player.totalUnitLevels(UnitType.RadarShip);
+    this._sonarStations = player.totalUnitLevels(UnitType.SonarStation);
     this.requestUpdate();
   }
 
@@ -176,6 +187,13 @@ export class UnitDisplay extends LitElement implements Layer {
               "sam_launcher",
               this.keybinds["buildSamLauncher"]?.key ?? "6",
             )}
+            ${this.renderUnitItem(
+              samLauncherIcon,
+              this._sonarStations,
+              UnitType.SonarStation,
+              "sonar_station",
+              this.keybinds["buildSonarStation"]?.key ?? "-",
+            )}
           </div>
         </div>
         <div class="bg-gray-800/70 backdrop-blur-xs rounded-lg p-0.5 w-fit">
@@ -186,6 +204,20 @@ export class UnitDisplay extends LitElement implements Layer {
               UnitType.Warship,
               "warship",
               this.keybinds["buildWarship"]?.key ?? "7",
+            )}
+            ${this.renderUnitItem(
+              warshipIcon,
+              this._submarines,
+              UnitType.Submarine,
+              "submarine",
+              this.keybinds["buildSubmarine"]?.key ?? "-",
+            )}
+            ${this.renderUnitItem(
+              warshipIcon,
+              this._radarShips,
+              UnitType.RadarShip,
+              "radar_ship",
+              this.keybinds["buildRadarShip"]?.key ?? "-",
             )}
             ${this.renderUnitItem(
               atomBombIcon,

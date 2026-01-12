@@ -16,8 +16,11 @@ export const STRUCTURE_SHAPES: Partial<Record<UnitType, ShapeType>> = {
   [UnitType.Factory]: "circle",
   [UnitType.DefensePost]: "octagon",
   [UnitType.SAMLauncher]: "square",
+  [UnitType.SonarStation]: "square",
   [UnitType.MissileSilo]: "triangle",
   [UnitType.Warship]: "cross",
+  [UnitType.Submarine]: "cross",
+  [UnitType.RadarShip]: "cross",
   [UnitType.AtomBomb]: "cross",
   [UnitType.HydrogenBomb]: "cross",
   [UnitType.MIRV]: "cross",
@@ -62,6 +65,7 @@ export class SpriteFactory {
     [UnitType.Port, { iconPath: anchorIcon, image: null }],
     [UnitType.MissileSilo, { iconPath: missileSiloIcon, image: null }],
     [UnitType.SAMLauncher, { iconPath: SAMMissileIcon, image: null }],
+    [UnitType.SonarStation, { iconPath: SAMMissileIcon, image: null }],
   ]);
   constructor(
     theme: Theme,

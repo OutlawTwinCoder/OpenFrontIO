@@ -161,6 +161,8 @@ export interface Config {
   traitorDefenseDebuff(): number;
   traitorDuration(): number;
   nukeMagnitudes(unitType: UnitType): NukeMagnitude;
+  radarShipDetectionRange(): number;
+  sonarStationDetectionRange(): number;
   // Number of tiles destroyed to break an alliance
   nukeAllianceBreakThreshold(): number;
   defaultNukeSpeed(): number;

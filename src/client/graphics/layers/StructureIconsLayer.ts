@@ -91,6 +91,7 @@ export class StructureIconsLayer implements Layer {
     [UnitType.Port, { visible: true }],
     [UnitType.MissileSilo, { visible: true }],
     [UnitType.SAMLauncher, { visible: true }],
+    [UnitType.SonarStation, { visible: true }],
   ]);
   private lastGhostQueryAt: number;
   potentialUpgrade: StructureRenderInfo | undefined;
